@@ -226,8 +226,7 @@ header p{color:var(--text-secondary);font-size:0.85rem;margin-top:2px}
 .action-btns button:hover{transform:translateY(-1px)}
 .action-btns .btn-income{border-color:var(--accent);color:var(--accent)}
 .action-btns .btn-income:hover{background:rgba(78,204,163,.1)}
-.action-btns .btn-credits{border-color:var(--purple);color:var(--purple)}
-.action-btns .btn-credits:hover{background:rgba(124,92,191,.1)}
+
 
 .section-header{font-size:0.9rem;font-weight:600;margin-bottom:8px;color:var(--text-secondary)}
 .tx-list{display:flex;flex-direction:column;gap:4px}
@@ -275,7 +274,6 @@ header p{color:var(--text-secondary);font-size:0.85rem;margin-top:2px}
 
     <div class="action-btns">
       <button class="btn-income" id="btn-income">+ Приход</button>
-      <button class="btn-credits" id="btn-to-credits">Кредиты</button>
     </div>
 
     <div class="section-header">Последние операции</div>
@@ -420,9 +418,6 @@ function init() {
 
   // dashboard
   document.getElementById('btn-income').addEventListener('click', openIncomeModal);
-  document.getElementById('btn-to-credits').addEventListener('click', () => {
-    document.querySelector('.tabs button[data-view="credits"]').click();
-  });
   document.getElementById('balance-card').addEventListener('click', editBalance);
 
   // income modal
