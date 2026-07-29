@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Календарь трезвости</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-page:#0f0f1a;
+  --bg-card:#1a1a2e;
+  --border:#2a2a4a;
+  --text:#e8e8e8;
+  --text-secondary:#8888aa;
+  --accent:#4ecca3;
+  --purple:#7c5cbf;
+  --red:#ff6b6b;
+  --orange:#ffa94d;
+  --radius:12px;
+  --radius-sm:8px;
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  background:var(--bg-page);
+  color:var(--text);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  padding:20px;
+}
+#app{width:100%;max-width:600px}
+header{text-align:center;margin-bottom:24px}
+header h1{
+  font-size:2rem;font-weight:700;
+  background:linear-gradient(135deg,var(--accent),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;margin-bottom:4px;
+  line-height:1.2;
+}
+header p{color:var(--text-secondary);font-size:0.9rem}
+.back-btn{display:inline-flex;align-items:center;gap:4px;color:var(--text-secondary);text-decoration:none;font-size:0.85rem;margin-bottom:8px;transition:color .2s}
+.back-btn:hover{color:var(--text)}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.stat-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px;text-align:center;
+}
+.stat-value{display:block;font-size:1.8rem;font-weight:700;color:var(--accent)}
+.stat-card:nth-child(2) .stat-value{color:var(--red)}
+.stat-card:nth-child(3) .stat-value{color:var(--orange)}
+.stat-label{display:block;font-size:0.75rem;color:var(--text-secondary);margin-top:4px}
+.stat-sub{font-size:0.65rem;color:var(--text-secondary);margin-top:2px;opacity:0.7}
+.stat-total{font-size:0.65rem;color:var(--text-secondary);margin-top:1px;display:block}
+
+.nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px}
+.nav button{
+  background:var(--bg-card);border:1px solid var(--border);
+  color:var(--text);width:36px;height:36px;border-radius:50%;
+  cursor:pointer;font-size:1.1rem;display:flex;
+  align-items:center;justify-content:center;transition:background .2s;
+  user-select:none;
+}
+.nav button:hover{background:var(--border)}
+.nav .month-title{font-size:1.3rem;font-weight:600;min-width:180px;text-align:center}
+
+.legend{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:16px;font-size:0.8rem;color:var(--text-secondary)}
+.legend-item{display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot.green{background:var(--accent)}
+.dot.red{background:var(--red)}
+.dot.orange{background:var(--orange)}
+.dot.gray{background:var(--border)}
+
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.day-header{text-align:center;font-size:0.75rem;color:var(--text-secondary);padding:8px 0;font-weight:600}
+.day-cell{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:var(--radius-sm);background:var(--bg-card);
+  border:2px solid transparent;font-size:1rem;font-weight:700;
+  cursor:pointer;transition:all .15s;position:relative;
+}
+.day-cell:hover{border-color:var(--text-secondary);transform:scale(1.05);z-index:1}
+.day-cell.empty{background:transparent;border-color:transparent;cursor:default;pointer-events:none}
+.day-cell.future{opacity:0.3;pointer-events:none}
+.day-cell.today{border-color:var(--accent);box-shadow:0 0 10px rgba(78,204,163,.25)}
+.day-cell.today::after{
+  content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--accent);
+}
+.day-cell.status-sober{
+  background:linear-gradient(135deg,rgba(78,204,163,.2),rgba(78,204,163,.05));
+  border-color:var(--accent);
+}
+.day-cell.status-no_alcohol{
+  background:linear-gradient(135deg,rgba(255,107,107,.2),rgba(255,107,107,.05));
+  border-color:var(--red);
+}
+.day-cell.status-no_nicotine{
+  background:linear-gradient(135deg,rgba(255,169,77,.2),rgba(255,169,77,.05));
+  border-color:var(--orange);
+}
+
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:none;align-items:flex-end;justify-content:center;
+  z-index:100;padding:20px;
+}
+.modal-overlay.active{display:flex}
+.modal-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px;
+  width:100%;max-width:360px;
+  animation:slideUp .25s ease-out;
+}
+@keyframes slideUp{
+  from{transform:translateY(40px);opacity:0}
+  to{transform:translateY(0);opacity:1}
+}
+.modal-card h3{text-align:center;font-size:1.1rem;margin-bottom:20px;color:var(--text)}
+.modal-buttons{display:flex;flex-direction:column;gap:8px}
+.modal-btn{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;border:1px solid var(--border);
+  border-radius:var(--radius-sm);background:transparent;
+  color:var(--text);font-size:.9rem;cursor:pointer;
+  transition:all .2s;text-align:left;width:100%;
+  font-family:inherit;
+}
+.modal-btn:hover{background:rgba(255,255,255,.04);border-color:var(--text-secondary)}
+.modal-btn .icon{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;flex-shrink:0;
+}
+.modal-btn .icon-green{background:rgba(78,204,163,.2);color:var(--accent)}
+.modal-btn .icon-red{background:rgba(255,107,107,.2);color:var(--red)}
+.modal-btn .icon-orange{background:rgba(255,169,77,.2);color:var(--orange)}
+.modal-btn .icon-gray{background:rgba(136,136,170,.2);color:var(--text-secondary)}
+.modal-btn .btn-label{font-weight:600}
+.modal-btn .btn-desc{font-size:.75rem;color:var(--text-secondary);margin-top:1px}
+.modal-cancel{
+  width:100%;padding:12px;margin-top:4px;
+  background:transparent;border:none;color:var(--text-secondary);
+  font-size:.9rem;cursor:pointer;text-align:center;
+  transition:color .2s;font-family:inherit;
+}
+.modal-cancel:hover{color:var(--text)}
+
+@media(max-width:600px){
+  .stats{grid-template-columns:1fr}
+  .stat-value{font-size:1.4rem}
+  .day-cell{font-size:.85rem}
+  .nav .month-title{font-size:1.1rem;min-width:140px}
+  body{padding:12px}
+  header h1{font-size:1.6rem}
+}
+</style>
+</head>
+<body>
+  <div id="app">
+  <a href="/" class="back-btn">&larr; Назад</a>
+  <header>
+    <h1>Календарь трезвости</h1>
+    <p>Каждый день — это победа</p>
+  </header>
+
+  <section class="stats">
+    <div class="stat-card">
+      <span class="stat-value" id="streak-total">0</span>
+      <span class="stat-label">полная трезвость</span>
+      <span class="stat-sub" id="streak-total-sub">дней подряд</span>
+      <span class="stat-total" id="total-total">всего 0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="streak-alcohol">0</span>
+      <span class="stat-label">без алкоголя</span>
+      <span class="stat-sub" id="streak-alcohol-sub">дней подряд</span>
+      <span class="stat-total" id="total-alcohol">всего 0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="streak-nicotine">0</span>
+      <span class="stat-label">без никотина</span>
+      <span class="stat-sub" id="streak-nicotine-sub">дней подряд</span>
+      <span class="stat-total" id="total-nicotine">всего 0</span>
+    </div>
+  </section>
+
+  <div class="nav">
+    <button id="prev-month" title="Предыдущий месяц">&larr;</button>
+    <span class="month-title" id="month-title">Июль 2026</span>
+    <button id="next-month" title="Следующий месяц">&rarr;</button>
+  </div>
+
+  <div class="legend">
+    <span class="legend-item"><span class="dot green"></span>Полная трезвость</span>
+    <span class="legend-item"><span class="dot red"></span>Без алкоголя</span>
+    <span class="legend-item"><span class="dot orange"></span>Без никотина</span>
+    <span class="legend-item"><span class="dot gray"></span>Не отмечено</span>
+  </div>
+
+  <div class="calendar" id="calendar"></div>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal-card">
+    <h3 id="modal-date">1 января 2026</h3>
+    <div class="modal-buttons" id="modal-buttons">
+      <button class="modal-btn" data-status="sober">
+        <span class="icon icon-green">&#10003;</span>
+        <span><span class="btn-label">Полная трезвость</span><br><span class="btn-desc">Ни алкоголя, ни никотина</span></span>
+      </button>
+      <button class="modal-btn" data-status="no_alcohol">
+        <span class="icon icon-red">&#10007;</span>
+        <span><span class="btn-label">Без алкоголя</span><br><span class="btn-desc">Алкоголя не было, никотин был</span></span>
+      </button>
+      <button class="modal-btn" data-status="no_nicotine">
+        <span class="icon icon-orange">&#10007;</span>
+        <span><span class="btn-label">Без никотина</span><br><span class="btn-desc">Никотина не было, алкоголь был</span></span>
+      </button>
+      <button class="modal-btn" data-status="none">
+        <span class="icon icon-gray">&ndash;</span>
+        <span><span class="btn-label">Снять отметку</span><br><span class="btn-desc">Вернуть в неотмеченное состояние</span></span>
+      </button>
+    </div>
+    <button class="modal-cancel" id="modal-cancel">Отмена</button>
+  </div>
+</div>
+
+<script>
+const DAYS_RU = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const MONTHS_GEN = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+let viewYear, viewMonth;
+let records = {};
+let selectedDate = null;
+
+async function init() {
+  const now = new Date();
+  viewYear = now.getFullYear();
+  viewMonth = now.getMonth();
+  await loadRecords();
+  render();
+  document.getElementById('prev-month').addEventListener('click', () => { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } render(); });
+  document.getElementById('next-month').addEventListener('click', () => { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } render(); });
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+  document.getElementById('modal-buttons').addEventListener('click', e => {
+    const btn = e.target.closest('.modal-btn');
+    if (!btn) return;
+    const status = btn.dataset.status;
+    if (selectedDate) {
+      const key = dateKey(selectedDate);
+      if (status === 'none') {
+        delete records[key];
+      } else {
+        records[key] = status;
+      }
+      saveRecords();
+      render();
+      closeModal();
+    }
+  });
+}
+
+function dateKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+async function loadRecords() {
+  try {
+    const cached = localStorage.getItem('sobrietyCalendar');
+    if (cached) records = JSON.parse(cached);
+  } catch(e) {}
+  try {
+    const res = await fetch('/api/sobriety/records');
+    if (res.ok) {
+      const server = await res.json();
+      const hasData = Object.keys(server).length > 0;
+      if (hasData) {
+        records = server;
+        localStorage.setItem('sobrietyCalendar', JSON.stringify(records));
+      } else if (Object.keys(records).length > 0) {
+        await fetch('/api/sobriety/records', {
+          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(records)
+        });
+      }
+    }
+  } catch(e) {}
+}
+
+async function saveRecords() {
+  localStorage.setItem('sobrietyCalendar', JSON.stringify(records));
+  try {
+    await fetch('/api/sobriety/records', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(records)
+    });
+  } catch(e) { /* will sync later */ }
+}
+
+function todayEquals(d, now) {
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+
+function render() {
+  renderCalendar();
+  renderStreaks();
+}
+
+function renderCalendar() {
+  const cal = document.getElementById('calendar');
+  const now = new Date();
+
+  // headers
+  let html = DAYS_RU.map(d => '<div class="day-header">' + d + '</div>').join('');
+
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const lastDay = new Date(viewYear, viewMonth + 1, 0);
+  const daysInMonth = lastDay.getDate();
+
+  // Monday=0, Sunday=6
+  let startCol = (firstDay.getDay() + 6) % 7;
+
+  // empty leading cells
+  for (let i = 0; i < startCol; i++) {
+    html += '<div class="day-cell empty"></div>';
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cellDate = new Date(viewYear, viewMonth, d);
+    const key = dateKey(cellDate);
+    const isToday = todayEquals(cellDate, now);
+    const isFuture = cellDate > now;
+
+    let cls = 'day-cell';
+    if (isToday) cls += ' today';
+    if (isFuture) cls += ' future';
+
+    const status = records[key];
+    if (status && status !== 'none') {
+      cls += ' status-' + status;
+    }
+
+    html += '<div class="' + cls + '" data-year="' + viewYear + '" data-month="' + viewMonth + '" data-day="' + d + '">' + d + '</div>';
+  }
+
+  // trailing empty cells
+  const totalCells = startCol + daysInMonth;
+  const remainder = totalCells % 7;
+  if (remainder > 0) {
+    for (let i = 0; i < 7 - remainder; i++) {
+      html += '<div class="day-cell empty"></div>';
+    }
+  }
+
+  cal.innerHTML = html;
+
+  // click handlers on day cells
+  cal.querySelectorAll('.day-cell:not(.empty):not(.future)').forEach(el => {
+    el.addEventListener('click', () => {
+      const year = parseInt(el.dataset.year);
+      const month = parseInt(el.dataset.month);
+      const day = parseInt(el.dataset.day);
+      selectedDate = new Date(year, month, day);
+      openModal(selectedDate);
+    });
+  });
+
+  // month title
+  document.getElementById('month-title').textContent = MONTHS_RU[viewMonth] + ' ' + viewYear;
+}
+
+function renderStreaks() {
+  const now = new Date();
+  const total = calcStreak(now, s => s === 'sober');
+  const alcohol = calcStreak(now, s => s === 'sober' || s === 'no_alcohol');
+  const nicotine = calcStreak(now, s => s === 'sober' || s === 'no_nicotine');
+
+  document.getElementById('streak-total').textContent = total;
+  document.getElementById('streak-alcohol').textContent = alcohol;
+  document.getElementById('streak-nicotine').textContent = nicotine;
+
+  document.getElementById('streak-total-sub').textContent = pluralize(total, 'день', 'дня', 'дней') + ' подряд';
+  document.getElementById('streak-alcohol-sub').textContent = pluralize(alcohol, 'день', 'дня', 'дней') + ' подряд';
+  document.getElementById('streak-nicotine-sub').textContent = pluralize(nicotine, 'день', 'дня', 'дней') + ' подряд';
+
+  const totals = calcTotals();
+  document.getElementById('total-total').textContent = 'всего ' + totals.sober;
+  document.getElementById('total-alcohol').textContent = 'всего ' + totals.noAlcohol;
+  document.getElementById('total-nicotine').textContent = 'всего ' + totals.noNicotine;
+}
+
+function calcTotals() {
+  let sober = 0, noAlcohol = 0, noNicotine = 0;
+  for (const key in records) {
+    const s = records[key];
+    if (s === 'sober') { sober++; noAlcohol++; noNicotine++; }
+    else if (s === 'no_alcohol') { noAlcohol++; }
+    else if (s === 'no_nicotine') { noNicotine++; }
+  }
+  return { sober, noAlcohol, noNicotine };
+}
+
+function calcStreak(from, qualifies) {
+  let count = 0;
+  const d = new Date(from);
+  for (let i = 0; i < 3650; i++) {
+    const key = dateKey(d);
+    const s = records[key];
+    if (s && qualifies(s)) {
+      count++;
+      d.setDate(d.getDate() - 1);
+    } else if (i === 0 && !s) {
+      d.setDate(d.getDate() - 1);
+      continue;
+    } else {
+      break;
+    }
+  }
+  return count;
+}
+
+function pluralize(n, one, few, many) {
+  n = Math.abs(n) % 100;
+  const n1 = n % 10;
+  if (n > 10 && n < 20) return many;
+  if (n1 > 1 && n1 < 5) return few;
+  if (n1 === 1) return one;
+  return many;
+}
+
+function openModal(d) {
+  const el = document.getElementById('modal');
+  document.getElementById('modal-date').textContent = d.getDate() + ' ' + MONTHS_GEN[d.getMonth()] + ' ' + d.getFullYear();
+
+  const key = dateKey(d);
+  const currentStatus = records[key] || null;
+
+  document.querySelectorAll('.modal-btn').forEach(btn => {
+    const status = btn.dataset.status;
+    if (status === 'none' && (!currentStatus || currentStatus === 'none')) {
+      btn.style.display = 'none';
+    } else if (status === currentStatus) {
+      btn.style.borderColor = 'var(--text-secondary)';
+      btn.style.background = 'rgba(255,255,255,.06)';
+    } else {
+      btn.style.display = 'flex';
+      btn.style.borderColor = '';
+      btn.style.background = '';
+    }
+  });
+
+  el.classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('active');
+  selectedDate = null;
+}
+
+document.addEventListener('DOMContentLoaded', init);
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
+</body>
+</html>
