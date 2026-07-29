@@ -218,11 +218,11 @@ header p{color:var(--text-secondary);font-size:0.85rem;margin-top:2px}
     </div>
     <div class="stat-card">
       <span class="stat-value" id="stat-monthly">0</span>
-      <span class="stat-label">платежей в месяц</span>
+      <span class="stat-label" id="stat-monthly-label">платежей в месяц</span>
     </div>
     <div class="stat-card">
       <span class="stat-value" id="stat-remaining">0</span>
-      <span class="stat-label">осталось в этом месяце</span>
+      <span class="stat-label" id="stat-remaining-label">осталось в этом месяце</span>
     </div>
   </section>
 
@@ -257,6 +257,8 @@ header p{color:var(--text-secondary);font-size:0.85rem;margin-top:2px}
     <input id="credit-monthly" type="number" placeholder="45000">
     <label>День платежа</label>
     <input id="credit-day" type="number" min="1" max="31" placeholder="15">
+    <label>Последний платёж (ММ.ГГГГ)</label>
+    <input id="credit-last" placeholder="07.2030 — оставьте пустым, если ещё идёт">
     <div class="modal-actions">
       <button class="btn-cancel" id="credit-cancel">Отмена</button>
       <button class="btn-primary" id="credit-save">Сохранить</button>
@@ -365,14 +367,18 @@ function fmtFull(n) {
 
 function renderStats() {
   const credits = data.credits || [];
-  document.getElementById('stat-credits').textContent = credits.length;
-  const totalMonthly = credits.reduce((s, c) => s + (c.monthly || 0), 0);
+  const ym = viewYear + '-' + String(viewMonth + 1).padStart(2, '0');
+  const active = credits.filter(c => isActiveInMonth(c, viewYear, viewMonth));
+  const monthName = MONTHS_RU[viewMonth].toLowerCase();
+
+  document.getElementById('stat-credits').textContent = active.length;
+  document.getElementById('stat-monthly-label').textContent = 'платежей в ' + monthName;
+  const totalMonthly = active.reduce((s, c) => s + (c.monthly || 0), 0);
   document.getElementById('stat-monthly').textContent = fmtFull(totalMonthly);
 
-  const now = new Date();
-  const ym = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  document.getElementById('stat-remaining-label').textContent = 'осталось в ' + monthName;
   let paidThisMonth = 0;
-  for (const c of credits) {
+  for (const c of active) {
     const p = data.payments?.[c.id]?.[ym];
     if (p?.status === 'paid' || p?.status === 'early') paidThisMonth += c.monthly;
   }
@@ -424,16 +430,6 @@ function renderCredits() {
       openPaymentModal(viewYear, viewMonth, c.day);
     });
   });
-}
-
-function countPaid(creditId) {
-  return Object.keys(data.payments[creditId] || {}).length;
-}
-
-function getMonthsSince(day) {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - 6, day);
-  return (now - start) / (30 * 86400000);
 }
 
 function esc(s) {
@@ -503,13 +499,19 @@ function renderCalendar() {
   document.getElementById('month-title').textContent = MONTHS_RU[viewMonth] + ' ' + viewYear;
 }
 
+function isActiveInMonth(c, year, month) {
+  if (!c.lastMonth) return true;
+  const ym = year + '-' + String(month + 1).padStart(2, '0');
+  return ym <= c.lastMonth;
+}
+
 function getDayIcons(year, month, day) {
   const credits = data.credits || [];
   const ym = year + '-' + String(month + 1).padStart(2, '0');
   const icons = [];
 
   for (const c of credits) {
-    if (c.day === day) {
+    if (c.day === day && isActiveInMonth(c, year, month)) {
       const payment = data.payments[c.id]?.[ym];
       if (payment?.status === 'paid') icons.push('<span class="icon-paid">\u2713</span>');
       else if (payment?.status === 'early') icons.push('<span class="icon-early">\u26A1</span>');
@@ -530,7 +532,7 @@ function openPaymentModal(year, month, day) {
   const date = new Date(year, month, day);
   const today = new Date();
 
-  const dueCredits = credits.filter(c => c.day === day);
+  const dueCredits = credits.filter(c => c.day === day && isActiveInMonth(c, year, month));
   if (dueCredits.length === 0) return;
 
   document.getElementById('payment-modal-title').textContent =
@@ -607,6 +609,7 @@ function openCreditModal(credit, prefilledDay) {
   document.getElementById('credit-name').value = credit ? credit.name : '';
   document.getElementById('credit-monthly').value = credit ? credit.monthly : '';
   document.getElementById('credit-day').value = credit ? credit.day : (prefilledDay || '');
+  document.getElementById('credit-last').value = credit?.lastMonth ? credit.lastMonth.slice(3) + '.' + credit.lastMonth.slice(0,2) : '';
   document.getElementById('credit-overlay').classList.add('active');
   document.getElementById('credit-name').focus();
 }
@@ -620,16 +623,22 @@ function saveCredit() {
   const name = document.getElementById('credit-name').value.trim();
   const monthly = parseFloat(document.getElementById('credit-monthly').value);
   const day = parseInt(document.getElementById('credit-day').value);
+  const lastRaw = document.getElementById('credit-last').value.trim();
+  let lastMonth = '';
+  if (lastRaw) {
+    const m = lastRaw.match(/^(\d{2})\.(\d{4})$/);
+    if (m) lastMonth = m[2] + '-' + m[1];
+  }
 
   if (!name || !monthly || !day || day < 1 || day > 31) return;
 
   if (editingCreditId) {
     const c = data.credits.find(x => x.id === editingCreditId);
-    if (c) { c.name = name; c.monthly = monthly; c.day = day; }
+    if (c) { c.name = name; c.monthly = monthly; c.day = day; c.lastMonth = lastMonth || undefined; }
   } else {
     data.credits.push({
       id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
-      name, monthly, day
+      name, monthly, day, lastMonth: lastMonth || undefined
     });
   }
 
