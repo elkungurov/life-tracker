@@ -5,3 +5,5 @@ data-*.json
 venv/
 .venv/
 instance/
+client/node_modules/
+client/dist/

@@ -104,25 +104,24 @@ def save_sobriety():
     db.session.commit()
     return jsonify({'ok': True})
 
-@app.route('/')
-def home():
-    return send_file(os.path.join(BASE, 'index.html'))
+CLIENT_DIST = os.path.join(BASE, 'client', 'dist')
 
-@app.route('/login')
-def login_page():
-    return send_file(os.path.join(BASE, 'login.html'))
-
-@app.route('/finance')
-def finance():
-    return send_file(os.path.join(BASE, 'finance.html'))
-
-@app.route('/sobriety')
-def sobriety():
-    return send_file(os.path.join(BASE, 'sobriety.html'))
-
+@app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def static_files(path):
-    return send_from_directory(BASE, path)
+def serve_frontend(path):
+    if path.startswith('api/'):
+        return jsonify({'error': 'not found'}), 404
+    if os.path.isdir(CLIENT_DIST):
+        file_path = os.path.join(CLIENT_DIST, path)
+        if path and os.path.isfile(file_path):
+            return send_file(file_path)
+        return send_file(os.path.join(CLIENT_DIST, 'index.html'))
+    if not path or path == '':
+        return send_file(os.path.join(BASE, 'index.html'))
+    try:
+        return send_from_directory(BASE, path)
+    except:
+        return send_file(os.path.join(BASE, 'index.html'))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5002))
