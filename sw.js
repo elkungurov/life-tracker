@@ -1,5 +1,5 @@
-const CACHE = 'tracker-v2';
-const URLS = ['/', '/sobriety', '/finance', '/manifest.json', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'tracker-v3';
+const URLS = ['/', '/login', '/sobriety', '/finance', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));

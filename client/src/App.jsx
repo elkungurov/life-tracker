@@ -6,13 +6,15 @@ import SobrietyPage from './pages/SobrietyPage';
 import FinancePage from './pages/FinancePage';
 
 function ProtectedRoute({ children }) {
-  const { isAuth } = useAuth();
+  const { isAuth, loading } = useAuth();
+  if (loading) return null;
   if (!isAuth) return <Navigate to="/login" replace />;
   return children;
 }
 
 function PublicRoute({ children }) {
-  const { isAuth } = useAuth();
+  const { isAuth, loading } = useAuth();
+  if (loading) return null;
   if (isAuth) return <Navigate to="/" replace />;
   return children;
 }

@@ -5,15 +5,22 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = getToken();
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ email: payload.email || '', token });
+        const exp = payload.exp * 1000;
+        if (Date.now() >= exp) {
+          clearToken();
+        } else {
+          setUser({ email: payload.email || '', token });
+        }
       } catch { clearToken(); }
     }
+    setLoading(false);
   }, []);
 
   function loginWithToken(token) {
@@ -30,7 +37,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuth: !!user, loginWithToken, logout }}>
+    <AuthContext.Provider value={{ user, isAuth: !!user, loading, loginWithToken, logout }}>
       {children}
     </AuthContext.Provider>
   );

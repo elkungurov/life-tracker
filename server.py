@@ -105,23 +105,31 @@ def save_sobriety():
     return jsonify({'ok': True})
 
 CLIENT_DIST = os.path.join(BASE, 'client', 'dist')
+HTML_PAGES = {'', 'login', 'finance', 'sobriety'}
+
+def _serve_client_index():
+    if os.path.isfile(os.path.join(CLIENT_DIST, 'index.html')):
+        return send_file(os.path.join(CLIENT_DIST, 'index.html'))
+    return send_file(os.path.join(BASE, 'index.html'))
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
     if path.startswith('api/'):
         return jsonify({'error': 'not found'}), 404
-    if os.path.isdir(CLIENT_DIST):
+    # Try serving from React build
+    if os.path.isfile(os.path.join(CLIENT_DIST, 'index.html')):
         file_path = os.path.join(CLIENT_DIST, path)
         if path and os.path.isfile(file_path):
             return send_file(file_path)
-        return send_file(os.path.join(CLIENT_DIST, 'index.html'))
-    if not path or path == '':
-        return send_file(os.path.join(BASE, 'index.html'))
-    try:
-        return send_from_directory(BASE, path)
-    except:
-        return send_file(os.path.join(BASE, 'index.html'))
+        return _serve_client_index()
+    # Fallback to old HTML files
+    if path in HTML_PAGES:
+        page = path if path else 'index'
+        f = os.path.join(BASE, page + '.html')
+        if os.path.isfile(f):
+            return send_file(f)
+    return send_file(os.path.join(BASE, 'index.html'))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5002))
