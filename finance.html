@@ -39,7 +39,7 @@ header p{color:var(--text-secondary);font-size:0.85rem;margin-top:2px}
 .back-btn{display:inline-flex;align-items:center;gap:4px;color:var(--text-secondary);text-decoration:none;font-size:0.85rem;margin-bottom:8px;transition:color .2s}
 .back-btn:hover{color:var(--text)}
 
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
 .stat-card{
   background:var(--bg-card);border:1px solid var(--border);
   border-radius:var(--radius);padding:14px 12px;text-align:center;
@@ -217,7 +217,10 @@ header p{color:var(--text-secondary);font-size:0.85rem;margin-top:2px}
       <span class="stat-value" id="stat-monthly">0</span>
       <span class="stat-label">платежей в месяц</span>
     </div>
-
+    <div class="stat-card">
+      <span class="stat-value" id="stat-remaining">0</span>
+      <span class="stat-label">осталось в этом месяце</span>
+    </div>
   </section>
 
   <div class="section-title">
@@ -362,6 +365,15 @@ function renderStats() {
   document.getElementById('stat-credits').textContent = credits.length;
   const totalMonthly = credits.reduce((s, c) => s + (c.monthly || 0), 0);
   document.getElementById('stat-monthly').textContent = fmtFull(totalMonthly);
+
+  const now = new Date();
+  const ym = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  let paidThisMonth = 0;
+  for (const c of credits) {
+    const p = data.payments?.[c.id]?.[ym];
+    if (p?.status === 'paid' || p?.status === 'early') paidThisMonth += c.monthly;
+  }
+  document.getElementById('stat-remaining').textContent = fmtFull(totalMonthly - paidThisMonth);
 }
 
 function renderCredits() {
