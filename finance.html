@@ -406,6 +406,14 @@ function renderCredits() {
   list.querySelectorAll('.del-credit').forEach(btn => {
     btn.addEventListener('click', e => { e.stopPropagation(); deleteCredit(+btn.dataset.idx); });
   });
+  list.querySelectorAll('.credit-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const c = data.credits[+el.dataset.idx];
+      if (!c) return;
+      const now = new Date();
+      openPaymentModal(now.getFullYear(), now.getMonth(), c.day);
+    });
+  });
 }
 
 function countPaid(creditId) {
