@@ -4,3 +4,7 @@ services:
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn server:app
+databases:
+  - name: life-tracker-db
+    databaseName: lifetracker
+    user: lifetracker

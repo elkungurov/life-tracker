@@ -80,6 +80,22 @@ header p{color:var(--text-secondary);font-size:1rem}
       <span class="card-arrow">&rarr;</span>
     </a>
   </div>
+  <div style="margin-top:40px;text-align:center">
+    <span id="user-email" style="font-size:0.8rem;color:var(--text-secondary)"></span>
+    <button id="logout-btn" style="display:block;margin:8px auto 0;background:transparent;border:1px solid var(--border);color:var(--text-secondary);padding:6px 16px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.8rem;transition:all .2s" onmouseover="this.style.borderColor='var(--text)'" onmouseout="this.style.borderColor=''">Выйти</button>
+  </div>
 </div>
+<script>
+const token = localStorage.getItem('token');
+if (!token) { window.location.href = '/login'; }
+try {
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  document.getElementById('user-email').textContent = payload.email || '';
+} catch(e) {}
+document.getElementById('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('token');
+  window.location.href = '/login';
+});
+</script>
 </body>
 </html>

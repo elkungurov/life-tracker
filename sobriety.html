@@ -161,10 +161,13 @@ header p{color:var(--text-secondary);font-size:0.9rem}
 </head>
 <body>
   <div id="app">
-  <a href="/" class="back-btn">&larr; Назад</a>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <a href="/" class="back-btn" style="margin-bottom:0">&larr; Назад</a>
+    <button id="logout-btn" style="background:transparent;border:1px solid var(--border);color:var(--text-secondary);padding:4px 12px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.75rem;transition:all .2s">Выйти</button>
+  </div>
   <header>
     <h1>Календарь трезвости</h1>
-    <p>Каждый день — это победа</p>
+    <p>Выберите дату, чтобы отметить состояние</p>
   </header>
 
   <section class="stats">
@@ -238,6 +241,18 @@ let viewYear, viewMonth;
 let records = {};
 let selectedDate = null;
 
+const TOKEN = localStorage.getItem('token');
+if (!TOKEN) window.location.href = '/login';
+
+async function apiFetch(url, opts) {
+  opts = opts || {};
+  if (!opts.headers) opts.headers = {};
+  opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  const res = await fetch(url, opts);
+  if (res.status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; }
+  return res;
+}
+
 async function init() {
   const now = new Date();
   viewYear = now.getFullYear();
@@ -276,7 +291,7 @@ async function loadRecords() {
     if (cached) records = JSON.parse(cached);
   } catch(e) {}
   try {
-    const res = await fetch('/api/sobriety/records');
+    const res = await apiFetch('/api/sobriety/records');
     if (res.ok) {
       const server = await res.json();
       const hasData = Object.keys(server).length > 0;
@@ -284,7 +299,7 @@ async function loadRecords() {
         records = server;
         localStorage.setItem('sobrietyCalendar', JSON.stringify(records));
       } else if (Object.keys(records).length > 0) {
-        await fetch('/api/sobriety/records', {
+        await apiFetch('/api/sobriety/records', {
           method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(records)
         });
       }
@@ -295,10 +310,8 @@ async function loadRecords() {
 async function saveRecords() {
   localStorage.setItem('sobrietyCalendar', JSON.stringify(records));
   try {
-    await fetch('/api/sobriety/records', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(records)
+    await apiFetch('/api/sobriety/records', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(records)
     });
   } catch(e) { /* will sync later */ }
 }
@@ -462,6 +475,11 @@ function closeModal() {
   document.getElementById('modal').classList.remove('active');
   selectedDate = null;
 }
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('token');
+  window.location.href = '/login';
+});
 
 document.addEventListener('DOMContentLoaded', init);
 if ('serviceWorker' in navigator) {

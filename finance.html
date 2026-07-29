@@ -254,7 +254,10 @@ header p{color:var(--text-secondary);font-size:0.85rem;margin-top:2px}
 </head>
 <body>
   <div id="app">
-  <a href="/" class="back-btn">&larr; Назад</a>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <a href="/" class="back-btn" style="margin-bottom:0">&larr; Назад</a>
+    <button id="logout-btn" style="background:transparent;border:1px solid var(--border);color:var(--text-secondary);padding:4px 12px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.75rem;transition:all .2s">Выйти</button>
+  </div>
   <header>
     <h1>Финансовый менеджер</h1>
     <p id="month-total-sub">Расходы и доходы под контролем</p>
@@ -374,6 +377,18 @@ let data = { balance: 0, transactions: [], credits: [], payments: {} };
 let selectedDate = null;
 let editingCreditId = null;
 
+const TOKEN = localStorage.getItem('token');
+if (!TOKEN) window.location.href = '/login';
+
+async function apiFetch(url, opts) {
+  opts = opts || {};
+  if (!opts.headers) opts.headers = {};
+  opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  const res = await fetch(url, opts);
+  if (res.status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; }
+  return res;
+}
+
 function init() {
   const now = new Date();
   viewYear = now.getFullYear();
@@ -436,7 +451,7 @@ async function loadData() {
     if (cached) data = JSON.parse(cached);
   } catch(e) {}
   try {
-    const res = await fetch('/api/finance/data');
+    const res = await apiFetch('/api/finance/data');
     if (res.ok) {
       const server = await res.json();
       const hasData = (server.credits?.length || 0) > 0 || Object.keys(server.payments || {}).length > 0;
@@ -444,7 +459,7 @@ async function loadData() {
         data = server;
         localStorage.setItem('financeData', JSON.stringify(data));
       } else if ((data.credits?.length || 0) > 0) {
-        await fetch('/api/finance/data', {
+        await apiFetch('/api/finance/data', {
           method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
         });
       }
@@ -455,7 +470,7 @@ async function loadData() {
 async function saveData() {
   localStorage.setItem('financeData', JSON.stringify(data));
   try {
-    await fetch('/api/finance/data', {
+    await apiFetch('/api/finance/data', {
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
     });
   } catch(e) {}
@@ -829,6 +844,11 @@ function todayEquals(d, now) {
 function dateKey(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('token');
+  window.location.href = '/login';
+});
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
